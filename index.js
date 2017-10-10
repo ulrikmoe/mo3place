@@ -5,30 +5,31 @@ let varRegex = /{{ ([\w./_-]+) }}/g;
 
 function readFromDisk(filename) {
     try {
-        return setCache(filename, fs.readFileSync(filename, 'utf8'));
+        return setCache(filename, fs.readFileSync(filename));
     } catch (e) {
         throw new Error(filename + ' does not exist');
     }
 }
 
 function setCache(filename, value) {
-    return cache[filename] = {
-        str: value,
-        time: Date.now()
-    };
+    return cache[filename] = { value, time: Date.now() };
 }
 
-function getStr(filename) {
+function getFile(filename) {
     if (cache[filename]) {
         // Stat the file to see if it changed.
         const mtime = new Date(fs.statSync(filename).mtime);
 
         // Serve from cache if possible
         if (mtime <= cache[filename].time) {
-            return cache[filename].str;
+            return cache[filename].value;
         }
     }
-    return readFromDisk(filename).str;
+    return readFromDisk(filename).value;
+}
+
+function getStr(filename) {
+    return getFile(filename).toString();
 }
 
 function render(str, vars) {
@@ -47,5 +48,5 @@ module.exports = (options={}) => {
     if (options.varRegex) { varRegex = options.varRegex; }
     if (options.inclRegex) { inclRegex = options.inclRegex; }
 
-    return { render, setCache, getStr };
+    return { render, setCache, getFile, getStr };
 };
