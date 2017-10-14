@@ -37,9 +37,12 @@ function render(str, vars, opts={}) {
         const regex = opts.varRegex ? opts.varRegex : varRegex;
 
         str = str.replace(regex, (match, k1) => {
-            if (!vars[k1]) { return match; }
-            // Replace potential vars in vars[k1].
-            return vars[k1].replace(regex, (m2, k2) => vars[k2] || m2);
+            if (typeof vars[k1] === 'string') {
+                // Replace potential vars in vars[k1].
+                return vars[k1].replace(regex, (m2, k2) => vars[k2] || m2);
+            }
+            if (typeof vars[k1] === 'number') { return vars[k1]; }
+            return match;
         });
     }
     return str;
