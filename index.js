@@ -36,10 +36,10 @@ function render(str, vars, opts={}) {
     if (typeof vars === 'object') {
         const regex = opts.varRegex ? opts.varRegex : varRegex;
 
-        str = str.replace(regex, (m, key) => {
-            // Replace variables inside variable.
-            const out = vars[key].replace(regex, (m, key) => vars[key] || m);
-            return out || m;
+        str = str.replace(regex, (match, k1) => {
+            if (!vars[k1]) { return match; }
+            // Replace potential vars in vars[k1].
+            return vars[k1].replace(regex, (m2, k2) => vars[k2] || m2);
         });
     }
     return str;
