@@ -1,8 +1,7 @@
 const fs = require('fs');
 const cache = {};
-let inclRegex = /{% include "([a-zA-Z0-9./_-]+)" %}/g;
-let varRegex = /{{ ([\w [\]'/_-]+) }}/g;
-
+const inclRegex = /{% include "([a-zA-Z0-9./_-]+)" %}/g;
+const varRegex = /{{ ([\w [\]'/_-]+) }}/g;
 
 function readFromDisk(filename) {
     try {
@@ -29,21 +28,16 @@ function getStr(filename) {
     return readFromDisk(filename).value;
 }
 
-function render(str, vars) {
+function render(str, vars, o={}) {
     // Include files
     str = str.replace(inclRegex, (m, path) => getStr(path));
 
     // Replace variables
     if (typeof vars === 'object') {
-        str = str.replace(varRegex, (m, key) => vars[key] || m);
+        str = str.replace(o.varRegex ? o.varRegex : varRegex, (m, key) =>
+            vars[key] || m);
     }
     return str;
 }
 
-module.exports = (options={}) => {
-    // Redefine regular expressions
-    if (options.varRegex) { varRegex = options.varRegex; }
-    if (options.inclRegex) { inclRegex = options.inclRegex; }
-
-    return { render, setCache, getStr };
-};
+module.exports = () => ({ render, setCache, getStr });
