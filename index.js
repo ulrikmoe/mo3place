@@ -28,14 +28,19 @@ function getStr(filename) {
     return readFromDisk(filename).value;
 }
 
-function render(str, vars, o={}) {
+function render(str, vars, opts={}) {
     // Include files
     str = str.replace(inclRegex, (m, path) => getStr(path));
 
     // Replace variables
     if (typeof vars === 'object') {
-        str = str.replace(o.varRegex ? o.varRegex : varRegex, (m, key) =>
-            vars[key] || m);
+        const regex = opts.varRegex ? opts.varRegex : varRegex;
+
+        str = str.replace(regex, (m, key) => {
+            // Replace variables inside variable.
+            const out = vars[key].replace(regex, (m, key) => vars[key] || m);
+            return out || m;
+        });
     }
     return str;
 }
