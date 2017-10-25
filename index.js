@@ -28,9 +28,14 @@ function getStr(filename) {
     return readFromDisk(filename).value;
 }
 
+// Recursive include (dangerous)
+function includer(x) {
+    return x.replace(inclRegex, (m, path) => includer(getStr(path)));
+}
+
 function render(str, vars, opts={}) {
     // Include files
-    str = str.replace(inclRegex, (m, path) => getStr(path));
+    str = includer(str);
 
     // Replace variables
     if (typeof vars === 'object') {
