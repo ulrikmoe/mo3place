@@ -29,9 +29,29 @@ function getStr(filename) {
 }
 
 // Recursive include (dangerous)
-function includer(x) {
-    return x.replace(inclRegex, (m, path) => includer(getStr(path)));
+function includer(str) {
+    return str.replace(inclRegex, (m, path) => includer(getStr(path)));
 }
+
+
+function flatten (json, opts={}) {
+    const prefix = opts.prefix || '.';
+    const suffix = opts.suffix || '';
+    const output = {};
+
+    function step (obj, prev) {
+        const keys = Object.keys(obj);
+        for (let i = 0; i < keys.length; i++) {
+            const value = obj[keys[i]];
+            const name = (prev) ? prev + prefix + keys[i] + suffix : keys[i];
+            if (value.constructor === Object) { return step(value, name); }
+            output[name] = value;
+        }
+    }
+    step(json);
+    return output;
+}
+
 
 function render(str, vars, opts={}) {
     // Include files
@@ -53,4 +73,4 @@ function render(str, vars, opts={}) {
     return str;
 }
 
-module.exports = () => ({ render, setCache, getStr });
+module.exports = () => ({ render, setCache, getStr, flatten });
