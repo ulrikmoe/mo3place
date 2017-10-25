@@ -44,8 +44,11 @@ function flatten (json, opts={}) {
         for (let i = 0; i < keys.length; i++) {
             const value = obj[keys[i]];
             const name = (prev) ? prev + prefix + keys[i] + suffix : keys[i];
-            if (value.constructor === Object) { return step(value, name); }
-            output[name] = value;
+            if (value.constructor === Object) {
+                step(value, name);
+            } else {
+                output[name] = value;
+            }
         }
     }
     step(json);
