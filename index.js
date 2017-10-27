@@ -33,8 +33,7 @@ function includer(str) {
     return str.replace(inclRegex, (m, path) => includer(getStr(path)));
 }
 
-
-function flatten (json, opts={}) {
+function flatten (arr, opts={}) {
     const prefix = opts.prefix || '.';
     const suffix = opts.suffix || '';
     const output = {};
@@ -42,18 +41,22 @@ function flatten (json, opts={}) {
     function step (obj, prev) {
         const keys = Object.keys(obj);
         for (let i = 0; i < keys.length; i++) {
-            const value = obj[keys[i]];
+            const val = obj[keys[i]];
             const name = (prev) ? prev + prefix + keys[i] + suffix : keys[i];
-            if (value.constructor === Object) {
-                step(value, name);
+            if (val && (val.constructor === Object || val.constructor === Array)) {
+                step(val, name);
             } else {
-                output[name] = value;
+                output[name] = val;
             }
         }
     }
-    step(json);
+
+    for (let i = 0; i < arr.length; i++) {
+        step(arr[i], null);
+    }
     return output;
 }
+
 
 
 function render(str, vars, opts={}) {
