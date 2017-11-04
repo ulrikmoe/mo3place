@@ -1,7 +1,7 @@
 const fs = require('fs');
 const cache = {};
-const inclRegex = /{% include "([a-zA-Z0-9./_-]+)" %}/g;
-const varRegex = /{{ ([\w [\]'/_\-.]+) }}/g;
+const inclRegex = /{% include "(.+?)" %}/g;
+const varRegex = /{{ (.+?) }}/g;
 
 function readFromDisk(filename) {
     try {
@@ -57,8 +57,6 @@ function flatten (arr, opts={}) {
     return output;
 }
 
-
-
 function render(str, vars, opts={}) {
     // Include files
     str = includer(str);
@@ -69,10 +67,12 @@ function render(str, vars, opts={}) {
 
         str = str.replace(regex, (match, k1) => {
             if (typeof vars[k1] === 'string') {
-                // Replace potential vars in vars[k1].
+                // Once more to replace vars in vars[k1].
                 return vars[k1].replace(regex, (m2, k2) => vars[k2] || m2);
             }
-            if (typeof vars[k1] === 'number') { return vars[k1]; }
+            if (typeof vars[k1] === 'number') {
+                return vars[k1];
+            }
             return match;
         });
     }
