@@ -1,7 +1,7 @@
 const fs = require('fs');
 const cache = {};
 const inclRegex = /{% include "([a-zA-Z0-9./_-]+)" %}/g;
-const varRegex = /{{ ([\w [\]'/_-]+) }}/g;
+const varRegex = /{{ ([\w [\]'/_\-.]+) }}/g;
 
 function readFromDisk(filename) {
     try {
