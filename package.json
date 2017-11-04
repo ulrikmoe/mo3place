@@ -1,6 +1,6 @@
 {
   "name": "mo3place",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Lightweight template engine (wip)",
   "main": "index.js",
   "repository": {
