@@ -3,36 +3,34 @@ const cache = {};
 const inclRegex = /{% include "(.+?)" %}/g;
 const varRegex = /{{ (.+?) }}/g;
 
-function readFromDisk(filename) {
+
+// Set cache manually
+function setCache(filename, str) {
+    cache[filename] = { str, mtime: Date.now() };
+}
+
+function getStr(filename) {
     try {
-        return setCache(filename, fs.readFileSync(filename, 'utf8'));
+        // Modification time (POSIX)
+        const mtime = fs.statSync(filename).mtimeMs / 1000;
+
+        // Serve from cache if possible
+        if (cache[filename] && mtime === cache[filename].mtime) {
+            return cache[filename].str;
+        }
+        cache[filename] = { str: fs.readFileSync(filename, 'utf8'), mtime };
+        return cache[filename].str;
     } catch (e) {
         throw new Error(filename + ' does not exist');
     }
 }
 
-function setCache(filename, value) {
-    return cache[filename] = { value, time: Date.now() };
-}
-
-function getStr(filename) {
-    if (cache[filename]) {
-        // Stat the file to see if it changed.
-        const mtime = new Date(fs.statSync(filename).mtime);
-
-        // Serve from cache if possible
-        if (mtime <= cache[filename].time) {
-            return cache[filename].value;
-        }
-    }
-    return readFromDisk(filename).value;
-}
-
-// Recursive include (dangerous)
+// Recursive include
 function includer(str) {
     return str.replace(inclRegex, (m, path) => includer(getStr(path)));
 }
 
+// Flatten objects
 function flatten (arr, opts={}) {
     const prefix = opts.prefix || '.';
     const suffix = opts.suffix || '';
@@ -57,8 +55,8 @@ function flatten (arr, opts={}) {
     return output;
 }
 
-function render(str, vars, opts={}) {
-    // Include files
+
+function fromString(str, vars, opts={}) {
     str = includer(str);
 
     // Replace variables
@@ -79,4 +77,21 @@ function render(str, vars, opts={}) {
     return str;
 }
 
-module.exports = () => ({ render, setCache, getStr, flatten });
+
+function render(file, vars, opts={}) {
+    const mtime = file.stat.mtimeMs / 1000;
+    const str = file.contents.toString('utf8'); // maybe consider utf16
+    cache[file.path.substring(file._cwd + 1)] = { str, mtime }
+    file.contents = Buffer.from(fromString(str, vars, opts));
+
+    // Check if any included files are newer than mtime.
+    let t2 = mtime;
+    // TODO: make this recursive
+    while ((arr = inclRegex.exec(str)) !== null) {
+        if (cache[arr[1]].mtime > t2) { t2 = cache[arr[1]].mtime; }
+    }
+    if (t2 > mtime) { file.stat.mtime = t2; }
+    return file;
+}
+
+module.exports = () => ({ render, fromString, setCache, getStr, flatten });
