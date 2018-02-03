@@ -9,25 +9,31 @@ function setCache(filename, str) {
     cache[filename] = { str, mtime: Date.now() };
 }
 
-function getStr(filename) {
+function getFile(filename) {
     try {
         // Modification time (POSIX)
         const mtime = fs.statSync(filename).mtimeMs / 1000;
 
         // Serve from cache if possible
         if (cache[filename] && mtime === cache[filename].mtime) {
-            return cache[filename].str;
+            return cache[filename];
         }
-        cache[filename] = { str: fs.readFileSync(filename, 'utf8'), mtime };
-        return cache[filename].str;
+        return cache[filename] = { str: fs.readFileSync(filename, 'utf8'), mtime };
     } catch (e) {
         throw new Error(filename + ' does not exist');
     }
 }
 
-// Recursive include
-function includer(str) {
-    return str.replace(inclRegex, (m, path) => includer(getStr(path)));
+// Recursive include files
+function includer(str, mainFile) {
+    return str.replace(inclRegex, (m, path) => {
+        const file = getFile(path)
+        if (mainFile && file.mtime * 1000 > mainFile.stat.mtimeMs) {
+            mainFile.stat.mtimeMs = file.mtime * 1000;
+            mainFile.stat.mtime = file.mtime;
+        }
+        return includer(file.str, mainFile);
+    });
 }
 
 // Flatten objects
@@ -55,43 +61,42 @@ function flatten (arr, opts={}) {
     return output;
 }
 
+function replaceVariables(str, vars, opts) {
+    const regex = opts.varRegex ? opts.varRegex : varRegex;
 
-function fromString(str, vars, opts={}) {
-    str = includer(str);
-
-    // Replace variables
-    if (typeof vars === 'object') {
-        const regex = opts.varRegex ? opts.varRegex : varRegex;
-
-        str = str.replace(regex, (match, k1) => {
-            if (typeof vars[k1] === 'string') {
-                // Once more to replace vars in vars[k1].
-                return vars[k1].replace(regex, (m2, k2) => vars[k2] || m2);
-            }
-            if (typeof vars[k1] === 'number') {
-                return vars[k1];
-            }
-            return match;
-        });
-    }
+    str = str.replace(regex, (match, k1) => {
+        if (typeof vars[k1] === 'string') {
+            // Once more to replace vars in vars[k1].
+            return vars[k1].replace(regex, (m2, k2) => vars[k2] || m2);
+        }
+        if (typeof vars[k1] === 'number') {
+            return vars[k1];
+        }
+        return match;
+    });
     return str;
 }
 
 
-function render(file, vars, opts={}) {
-    const mtime = file.stat.mtimeMs / 1000;
-    const str = file.contents.toString('utf8'); // maybe consider utf16
-    cache[file.path.substring(file._cwd + 1)] = { str, mtime }
-    file.contents = Buffer.from(fromString(str, vars, opts));
-
-    // Check if any included files are newer than mtime.
-    let t2 = mtime;
-    // TODO: make this recursive
-    while ((arr = inclRegex.exec(str)) !== null) {
-        if (cache[arr[1]].mtime > t2) { t2 = cache[arr[1]].mtime; }
+function fromString(str, vars, opts={}) {
+    const ret = includer(str);
+    if (typeof vars === 'object') {
+        replaceVariables(ret, vars, opts);
     }
-    if (t2 > mtime) { file.stat.mtime = t2; }
+    return ret;
+}
+
+
+function render(file, vars, opts={}) {
+    const str = file.contents.toString('utf8'); // maybe consider utf16
+    cache[file.path.substring(file._cwd + 1)] = {
+        str,
+        mtime: file.stat.mtimeMs / 1000
+    }
+    file.contents = Buffer.from(
+        replaceVariables(includer(str, file), vars, opts)
+    );
     return file;
 }
 
-module.exports = () => ({ render, fromString, setCache, getStr, flatten });
+module.exports = () => ({ render, fromString, setCache, getFile, flatten });
