@@ -25,7 +25,7 @@ function getFile(filename) {
 }
 
 // Recursive include files
-function includer(str, mainFile) {
+function includer(str, mainFile=false) {
     return str.replace(inclRegex, (m, path) => {
         const file = getFile(path)
         if (mainFile && file.mtime * 1000 > mainFile.stat.mtimeMs) {
@@ -62,9 +62,10 @@ function flatten (arr, opts={}) {
 }
 
 function replaceVariables(str, vars, opts) {
+    if (typeof vars !== 'object') { return str; }
     const regex = opts.varRegex ? opts.varRegex : varRegex;
 
-    str = str.replace(regex, (match, k1) => {
+    const ret = str.replace(regex, (match, k1) => {
         if (typeof vars[k1] === 'string') {
             // Once more to replace vars in vars[k1].
             return vars[k1].replace(regex, (m2, k2) => vars[k2] || m2);
@@ -74,18 +75,12 @@ function replaceVariables(str, vars, opts) {
         }
         return match;
     });
-    return str;
-}
-
-
-function fromString(str, vars, opts={}) {
-    const ret = includer(str);
-    if (typeof vars === 'object') {
-        replaceVariables(ret, vars, opts);
-    }
     return ret;
 }
 
+function fromString(str, vars, opts={}) {
+    return replaceVariables(includer(str), vars, opts);
+}
 
 function render(file, vars, opts={}) {
     const str = file.contents.toString('utf8'); // maybe consider utf16
