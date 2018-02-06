@@ -5,8 +5,11 @@ const varRegex = /{{ (.+?) }}/g;
 
 
 // Set cache manually
-function setCache(filename, str) {
-    cache[filename] = { str, mtime: Date.now() };
+function setCache(filename, str, mtime=false) {
+    cache[filename] = {
+        str,
+        mtime: mtime || Date.now()
+    };
 }
 
 function getFile(filename) {
@@ -15,7 +18,7 @@ function getFile(filename) {
         const mtime = fs.statSync(filename).mtimeMs / 1000;
 
         // Serve from cache if possible
-        if (cache[filename] && mtime === cache[filename].mtime) {
+        if (cache[filename] && mtime <= cache[filename].mtime) {
             return cache[filename];
         }
         return cache[filename] = { str: fs.readFileSync(filename, 'utf8'), mtime };
